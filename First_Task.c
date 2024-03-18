@@ -2,150 +2,180 @@
 #include<stdlib.h>
 #include <math.h>
 
-const int year_now = 2024, // Текущий год
-age = 30, //Количество лет
-year_end = year_now + age, //Год окончания наблюдений
-month_now = year_now*12,
-month_end = year_end*12;
-const float indexing = 12, //Индексация и инфляция
-start_capital = 2000000, //Изначальный капитал
-apartament_cost = 20000000, //Стоимость квартиры
-i_percent = 18,
-month_i_percent = i_percent/12, //Годовой процент по ипотеке
-v_percent = 16, //Процент по вкладу
-month_v_percent = v_percent/12,
-month_salary = 150000, //Зарплата
-month_food = 15000, //Затраты на еду в месяц
-month_rent = 25000; //Аренда за квартиру в месяц
+typedef long long int Money;
+const int YEAR_NOW = 2024; 
+const int MONTH_NOW = 3; 
+const int YEARS_COUNT = 30; 
+const Money START_CAPITAL = 2*1000*1000;          //Изначальный капитал
+const Money APARTMENT_COST = 20*1000*1000;        //Стоимость квартиры
+const Money MONTH_SALARY = 2*100*1000;              //Зарплата
+const Money MONTH_FOOD = 15*1000;                 //Затраты на еду в месяц
+const Money MONTH_RENT = 25*1000;                 //Аренда за квартиру в месяц
+const float INFLATION = 0.12;                     //Индексация и инфляция
+const float I_PERCENT = 0.18;                     //Годовой процент по ипотеки
+const float V_PERCENT = 0.16;                     //Процент по вкладу
 
+int month;
+int year;
+float flat_cost;
 
-struct person
+float annuity_coef()
 {
-    int 
-    year,
-    month;
-    float
-    flat_cost,
-    credit, //Сумма кредита
-    salary, 
-    food, 
-    rent, 
-    ostatok, //Сумма, оставшаяся от зарплаты после вычета затрат
-    capital; //Накопленная сумма за весь промежуток врем
+	return ((I_PERCENT/12 * pow(1 + I_PERCENT, YEARS_COUNT * 12)) / (pow(1 + I_PERCENT, YEARS_COUNT * 12) - 1));
+
+}
+
+float ipoteka()
+{
+	return((APARTMENT_COST - START_CAPITAL) * annuity_coef());
+}
+
+float dolar (float rubli)
+{
+	return( rubli / 100);
+}
+
+struct Person
+{
+    Money salary; 
+    Money food; 
+    Money rent; 
+    Money capital; //Накопленная сумма за весь промежуток врем
 };
 
+struct Person Bob;
+struct Person Alice;
 
-//Повышение зарплаты за счет индексации и затрат за счет инфляции
-float increase (float a, float b){
-    return a*(1+b/100);
-}
 
-//Подсчет капитала Алисы
-float Alice() { 
-    struct person Alice;
-    Alice.year = year_now;
-    Alice.flat_cost = apartament_cost;
-    Alice.credit = Alice.flat_cost - start_capital;
-    Alice.salary = month_salary;
-    Alice.food = month_food;
+
+void Alice_initially() {
     Alice.capital = 0;
-    Alice.ostatok = 0;
-    Alice.month = month_now;
-   
-   //Когда кредит будет меньше или равен нулю, цикл остановиться
-    while (Alice.month <= month_end){
-        for (int i = 1; Alice.credit > 0 && i<=12; i++, Alice.month++)
-            {
-                Alice.credit = increase(Alice.credit, month_i_percent);
-                Alice.ostatok = Alice.salary - Alice.food;
-                Alice.credit -= Alice.ostatok;
-            }
-        if ( Alice.credit > 0)
-        {
-            Alice.salary = increase(Alice.salary, indexing);
-            Alice.food = increase(Alice.food, indexing);
-        }
-        else {
-            break;
-        }
-    }
-    Alice.capital = Alice.credit*(-1); //Так как кредит получился меньше нуля, чего не может быть, то эти деньги уходят в капитал
-
-    //Начисление средств в капитал после выплаты кредита
-    while (Alice.month <= month_end) {
-        for (int i = 1; i <= 12; i++, Alice.month++)
-        {
-            Alice.ostatok = Alice.salary - Alice.food;
-            Alice.capital += Alice.ostatok;
-        }
-        Alice.salary = increase(Alice.salary, indexing);
-        Alice.food = increase(Alice.food, indexing);
-    
-    }
-    return Alice.capital;
+	Alice.salary = MONTH_SALARY;
+	Alice.food = MONTH_FOOD;
 }
 
-//Подсчет капитала Боба
-float Bob(){
-    struct person Bob;
-    Bob.year = year_now;
-    Bob.flat_cost = apartament_cost;
-    Bob.salary = month_salary;
-    Bob.food = month_food;
-    Bob.rent = month_rent;
-    Bob.capital = start_capital;
-    Bob.ostatok = 0;
-    Bob.month = month_now;
-    
-    
-   //Когда капитал превысит стоимость квартиры, цикл остановиться
-    while (Bob.month <= month_end) {
-        for (int i = 1; Bob.flat_cost > Bob.capital && i<=12; i++, Bob.month++)
-            {
-                Bob.ostatok = Bob.salary - Bob.food - Bob.rent;
-                Bob.capital += Bob.ostatok;
-            }
-        if (Bob.flat_cost > Bob.capital)
-        {
-            Bob.capital = increase(Bob.capital, v_percent);
-            Bob.salary = increase(Bob.salary, indexing);
-            Bob.food = increase(Bob.food, indexing);
-            Bob.rent = increase(Bob.food, indexing);
-            Bob.flat_cost = increase(Bob.flat_cost, indexing);
-        }
-        else {
-            break;
-        }
-    }
-    Bob.capital -= Bob.flat_cost; //Боб покупает квартиру
-//Подсчет капитала с исключением затрат на аренду
-    while (Bob.month <= month_end) {
-        for (int i = 1; i <= 12; i++, Bob.month++)
-        {
-            Bob.ostatok = Bob.salary - Bob.food;
-            Bob.capital += Bob.ostatok;
-        }
-        Bob.salary = increase(Bob.salary, indexing);
-        Bob.food = increase(Bob.food, indexing);
-    }
-    return Bob.capital;  
+void Bob_initially() {
+	Bob.capital = START_CAPITAL;
+	Bob.salary = MONTH_SALARY;
+	Bob.food = MONTH_FOOD;
+    Bob.rent = MONTH_RENT;
 }
 
-
-int main() 
+void alice_capital()
 {
-    printf("Alice capital %f\n", Alice());
-    printf("Bob capital %f\n", Bob());
-    if (Alice() > Bob())
-    {
-        printf("Alice win\n");
-        
-    }
-    else
-    {
-        printf("Bob win\n");
-        
-    }
-    system("pause");
+	Alice.capital += Alice.salary - ipoteka() - Alice.food;
+}
 
+void alice_increase_food()
+{
+	Alice.food *= 1 + INFLATION / 12;
+}
+
+void alice_increase_salary(int m)
+{
+	if (m == 12) {
+		Alice.salary *= 1 + INFLATION;
+	}
+}
+
+void ap_cost(int m)
+{
+	if (m == 12) {
+		flat_cost *= 1 + INFLATION;
+	}
+}
+
+void bob_increase_food()
+{
+	Bob.food *= 1 + INFLATION / 12;	
+}
+
+void bob_increase_salary(int m)
+{
+	if (m == 12) {
+		Bob.salary *= 1 + INFLATION;
+	}
+}
+
+void bob_increase_rent(int m)
+{
+	if (m == 12) {
+		Bob.rent *= 1 + INFLATION;
+	}
+}
+
+void bob_deposit()
+{
+	Bob.capital *= 1 + V_PERCENT / 12;  
+}
+
+void bob_capital()
+{
+	Bob.capital += Bob.salary - Bob.food - Bob.rent;
+}
+
+void print_alice()
+{
+	printf("Alice: %.0llf\n", dolar(Alice.capital));
+}
+
+
+void print_bob()
+{
+	printf("Bob: %.0llf\n", dolar(Bob.capital));
+}       
+
+void alice()
+{
+	month = MONTH_NOW;
+	year = YEAR_NOW;
+	while ((year != YEAR_NOW + YEARS_COUNT) || (month != MONTH_NOW)) {
+		alice_capital();
+		alice_increase_food();
+		alice_increase_salary(month);
+		if (month == 12) {
+			month = 1;
+			year++;
+		}
+		else
+		{
+			month++;
+		}
+	}
+	print_alice();
+}
+
+
+void bob()
+{
+	month = MONTH_NOW;
+	year = YEAR_NOW;
+    flat_cost = APARTMENT_COST; 
+	while ((year != YEAR_NOW + YEARS_COUNT) || (month!= MONTH_NOW)) {
+		bob_capital();
+        bob_deposit();
+		bob_increase_food();
+		bob_increase_salary(month);
+		bob_increase_rent(month);
+        ap_cost(month);
+		if (month == 12)
+		{
+			month = 1;
+			year++;
+		}
+		else
+		{
+			month++;
+		}
+	}
+	print_bob();
+}
+
+void main()
+{
+	Alice_initially();
+	Bob_initially();
+	alice();
+	bob();
+    system("pause");
 }
